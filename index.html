@@ -34,7 +34,7 @@ button.excluir {background-color: var(--vermelho); color:white;}
 
 <header>
   <strong>TSE – NAÇÃO BRASILEIRA</strong>
-  <button id="btnFundador">TSE – NAÇÃO BRASILEIRA</button>
+  <button id="btnFundador">Painel Fundador</button>
 </header>
 
 <main>
@@ -143,16 +143,10 @@ document.getElementById('btnFundador').addEventListener('click', ()=>{
     fundador=true;
     painel.style.display="flex";
     render();
-  } else {
-    alert("Senha incorreta!");
-  }
+  } else alert("Senha incorreta!");
 });
-
-// FECHAR PAINEL
 document.getElementById('btnFecharPainel').addEventListener('click', ()=>{ painel.style.display="none"; });
-
-// RANGE URNAS
-pctUrna.oninput=()=>{pctLabel.textContent=pctUrna.value+"%";};
+pctUrna.oninput=()=>{pctLabel.textContent=pctUrna.value+"%"; };
 
 // APLICAR ESTADO
 document.getElementById('btnAplicarEstado').addEventListener('click', ()=>{
@@ -176,21 +170,19 @@ document.getElementById('btnAddCandidato').addEventListener('click', ()=>{
   const nome=document.getElementById('nome').value;
   const partido=document.getElementById('partido').value;
   const votos=+document.getElementById('totalVotos').value||0;
-
   const fotoInput=document.getElementById('fotoCandidato');
-  if(fotoInput.files && fotoInput.files[0]){
-    const reader=new FileReader();
-    reader.onload=function(e){
-      push(ref(db,'candidatos/'+cargo+'/'+estado),{
-        nome,partido,votos,votosAtual:0,pct:0,status:'',foto:e.target.result
-      });
-    };
-    reader.readAsDataURL(fotoInput.files[0]);
-  } else {
+
+  const pushCandidato = (fotoURL)=>{
     push(ref(db,'candidatos/'+cargo+'/'+estado),{
-      nome,partido,votos,votosAtual:0,pct:0,status:'',foto:''
+      nome, partido, votos, votosAtual:0, pct:0, status:'', foto: fotoURL
     });
-  }
+  };
+
+  if(fotoInput.files && fotoInput.files[0]){
+    const reader = new FileReader();
+    reader.onload = e=> pushCandidato(e.target.result);
+    reader.readAsDataURL(fotoInput.files[0]);
+  } else pushCandidato('');
 
   document.getElementById('nome').value='';
   document.getElementById('partido').value='';
@@ -198,7 +190,7 @@ document.getElementById('btnAddCandidato').addEventListener('click', ()=>{
   fotoInput.value='';
 });
 
-// FUNÇÕES
+// FUNÇÕES AUX
 function atualizarEstados(){
   estadosLista.forEach(e=>{
     const d=dados[e]||{pct:0,cor:"#dee2e6"};
@@ -217,70 +209,3 @@ function atualizarGeral(){
       b+=dados[e].branco||0;
       n+=dados[e].nulo||0;
     }
-  });
-  document.getElementById('barraGeral').style.width=(s/estadosLista.length)+"%";
-  document.getElementById('pctGeral').textContent=(s/estadosLista.length).toFixed(1)+"%";
-  document.getElementById('brancoGeral').textContent=b;
-  document.getElementById('nuloGeral').textContent=n;
-}
-
-window.abrirEstado=function(uf){
-  estadoAtual=uf;
-  tituloCargo.textContent=cargoAtual+" – "+uf;
-  fecharEstadoArea.innerHTML=`<button class="btn-fechar-estado" onclick="fecharEstado()">Fechar ${uf}</button>`;
-  render();
-};
-window.fecharEstado=function(){
-  estadoAtual="BR";
-  tituloCargo.textContent=cargoAtual+" – Nacional";
-  fecharEstadoArea.innerHTML="";
-  render();
-};
-
-function render(){
-  listaCandidatos.innerHTML="";
-  for(let cargo in candidatos){
-    const lista = candidatos[cargo][estadoAtual]||{};
-    Object.entries(lista).forEach(([key,c])=>{
-      listaCandidatos.innerHTML+=`
-      <div class="candidato ${c.status==='ELEITO'?'eleito':''}">
-        ${c.foto? `<img src="${c.foto}" alt="Foto">` : ''}
-        <div style="flex:1">
-          <strong>${c.nome}</strong> (${c.partido}) ${c.status}
-          <div class="barra"><span style="width:${c.pct||0}%"></span></div>
-          ${fundador?`
-          <button status="ELEITO" onclick="marcarStatus('${cargo}','${estadoAtual}','${key}','ELEITO')">Eleito</button>
-          <button status="2TURNO" onclick="marcarStatus('${cargo}','${estadoAtual}','${key}','2TURNO')">2º Turno</button>
-          <button class="excluir" onclick="excluirCandidato('${cargo}','${estadoAtual}','${key}')">Excluir</button>
-          <button onclick="adicionarVotos('${cargo}','${estadoAtual}','${key}')">Adicionar Votos</button>
-          `:""}
-        </div>
-      </div>`;
-    });
-  }
-}
-
-window.marcarStatus=function(cargo,estado,key,status){
-  update(ref(db,'candidatos/'+cargo+'/'+estado+'/'+key),{status});
-}
-window.excluirCandidato=function(cargo,estado,key){
-  if(confirm("Deseja excluir este candidato?")){
-    set(ref(db,'candidatos/'+cargo+'/'+estado+'/'+key),null);
-  }
-}
-window.adicionarVotos=function(cargo,estado,key){
-  const votos=parseInt(prompt("Quantos votos adicionar?"));
-  if(!isNaN(votos)){
-    const candidatoRef=ref(db,'candidatos/'+cargo+'/'+estado+'/'+key);
-    get(candidatoRef).then(snap=>{
-      const c=snap.val();
-      if(c){
-        update(candidatoRef,{votosAtual:(c.votosAtual||0)+votos});
-      }
-    });
-  }
-}
-</script>
-
-</body>
-</html>
